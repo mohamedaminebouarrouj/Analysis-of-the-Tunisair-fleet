@@ -1,0 +1,470 @@
+---
+title: "Lab1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Méthodologie de travail CRISP-DM
+
+Au cours de notre étude, nous avons utilisé la méthode CRISP qui constitue un facteur déterminant à la réussite de notre projet puisqu'elle est toujours la seule méthode utilisable efficacement pour tous les projets Data Science.
+
+#Compréhension des données 
+
+Nous disposons de quatre fichiers .csv, delta.csv , tunisair.csv , dataminer2.csv et  aircraftsCleanedRawData.csv
+
+
+-Le fichier delta.csv qui nous a été fourni. Il regroupe 44 avions de la companies delta ,  et enumére 33 de leurs caractéristiques.
+
+-Le fichier tunisair.csv que nous avons elaborer avec l'aide de l'equipe de Tunisair Technics qui nous a fournit les informations dont nous avons besoin. Ce fichier regroupe les 28 avions de Tunisair et enumére 33 de leurs caractéristiques (les mêmes que celle trouvées dans delta.csv )
+
+-le fichier dataminer.csv  obtenu par la methode scrapping qui regroupe des caracteristique plus detaillé . 
+
+-le fichier aircraftsCleanedRawData.csv obtenu par la methode scrapping du site flightstats qui contient les enrigistrements des vols de tunisair depuis 3 mois (Aout,septembre,octobre) . 
+
+#Exploration des données 
+
+Exploration du fichier tunisair.csv
+
+```{r}
+tunisair=read.csv("tunisair.csv",sep=";",dec=",",header=T)
+str(tunisair)
+```
+
+```{r}
+avionVPS=tunisair[which(tunisair$Video>0 & tunisair$Power>0 & tunisair$Satellite>0 ),] 
+avionVPS$Aircraft
+```
+Que l'avion Airbus A330-243 dispose de l'alimentation , de video et de satellite . c'est le seul modele qui fait des vols a longue distance .
+
+#Les class 
+```{r}
+barplot(c(sum(tunisair$Economy),sum(tunisair$Eco.Comfort),sum(tunisair$Business),sum(tunisair$First.Class)),names=c("Economy","Eco.Comfort","Business","First.Class"), ylim = c(0,50))
+(sum(tunisair$Business)/28)*100
+
+```
+
+
+Absence des classe eco.comofort et first.class. 9 flottes n'ont que des classes economiques et 67,857% des classes affaires
+
+#Accomodation ( nombre de sieges )
+```{r}
+nrow(tunisair[which(tunisair$Accommodation==162),])/nrow(tunisair)*100
+
+```
+
+Plus de 50% des flottes tunisair possèdent exactement 162 sièges
+
+#Speed
+```{r}
+tunisair[which.max(tunisair$Cruising.Speed..mph.),] 
+```
+```{r}
+mean(tunisair$Cruising.Speed..mph.)
+```
+ la vitesse moyenne de la flotte est 538.2143 
+
+#Range Miles
+```{r}
+ tunisair[which.max(tunisair$Range..miles.),] 
+```
+l'Airbus A330-243 v1 peut parcourir la plus longue distance qui est de 7767 miles Sachant que seul cet avion parcourt une telle longue distance . 
+
+#Engines 
+```{r}
+nrow(tunisair[which(tunisair$Engines==2),] )
+```
+Tous les avions de tunisair ont deux moteurs
+
+#Length
+
+```{r}
+tunisair[which.max(tunisair$Length..ft.),] 
+```
+Airbus A330-243 v1 a la plus grande longueur de 193 ft 
+
+```{r}
+ nrow(tunisair[which(tunisair$Length..ft.==121),])/nrow(tunisair) * 100
+```
+Plus que 50% des avions de tunisair ont une longueur  de 121 ft 
+
+
+
+#-------------LA panoplie des modeles de tunisair se caracterise par-----------
+- Excellente panoplie en Cruising Speed et Range
+- Bonne panoplie en Business Class et en Economy Class
+- Moyenne panoplie en Accomodation, Wingspan et Length
+- Absence de First Class, Eco Comfort Class et  Wifi dans cette panoplie
+
+
+Exploration du fichier dataminer2.csv
+ 
+```{r}
+
+library(ggplot2)
+dataminer2 <- read.csv("dataminer2.csv")
+dataminer2 <- subset(dataminer2,dataminer2$Aircraft!="")
+ggplot(dataminer2, aes(Aircraft, fill = Seat.Type)) + geom_bar()+coord_flip()
+
+```
+
+
+D’après cette figure on conclut que le type Standard des ‘Seat Type’ est le plus utilisé dans tous les avions
+
+
+
+```{r}
+ggplot(dataminer2, aes(x=as.numeric(Power.Type), fill=Aircraft))+geom_histogram(binwidth=.5, colour="black")+theme_bw()+ ggtitle("Power Type by Aircraft")
+
+```
+
+
+ D’après cette figure on conclut que la majorité des avions utilisent le AC Power comme un source d’alimentation  
+
+
+```{r}
+ggplot(dataminer2, aes(x=as.numeric(Wi.Fi), fill=Aircraft))+geom_histogram(binwidth=.5, colour="black")+theme_bw()+ggtitle("Wi Fi par Aircraft") + 
+    xlab("Wi Fi")+ylab("Aircraft")
+
+```
+
+
+Tous les avions utilisent Wi-Fi sauf quelques avions de type Bombardier CRJ
+
+
+```{r}
+ggplot(dataminer2, aes(Video.Type, fill = Aircraft)) + geom_bar()+labs(title = "Video type by aircraft", x = "Aircraft", y = "Count ")
+
+```
+
+
+'On-demand TV' est le type le plus utilisé dans les avions suivi par 'none' Par contre le satellite TV et Overhead TV sont seulement utiliser par quelques avions tels que Bombardier et McDonell
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+dataminer3 <- read.csv("dataminer2.csv")
+dataminer3 <- subset(dataminer3,dataminer3$Aircraft!="")
+empty_bar=4
+to_add = data.frame( matrix(NA, empty_bar*nlevels(dataminer3$Seat.Type), ncol(dataminer3)) )
+colnames(to_add) = colnames(dataminer3)
+to_add$group=rep(levels(dataminer3$Seat.Type), each=empty_bar)
+dataminer3=dataminer3 %>% arrange(Seat.Type)
+dataminer3$id=seq(1, nrow(dataminer3))
+
+label_data=dataminer3
+number_of_bar=nrow(label_data)
+angle= 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust<-ifelse( angle < -90, 1, 0)
+label_data$angle<-ifelse(angle < -90, angle+180, angle)
+dataminer3<-label_data
+p = ggplot(dataminer3, aes(x=as.factor(id), y=as.numeric(Seat.Pich), fill=Seat.Type)) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+     geom_bar(stat="identity", alpha=0.5) +
+    ylim(-100,120) +
+    theme_minimal() +
+     theme(
+         legend.position = "none",
+         axis.text = element_blank(),
+         axis.title = element_blank(),
+         panel.grid = element_blank(),
+         plot.margin = unit(rep(-1,4), "cm") 
+     ) +
+     coord_polar() + 
+     geom_text(dataminer3=label_data, aes(x=id, y=as.numeric(Seat.Pich)+50, label=Aircraft, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) 
+
+p
+
+```
+
+
+
+Cette courbe nous montre que la majorité des avions tels que Boing et Airbus  utilisent le type Standard comme 'Seat Type'  avec des valeur Seat Widh un peu plus faible que les autres type
+
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+data <- read.csv("dataminer2.csv")
+data <- subset(dataminer3,dataminer3$Aircraft!="")
+empty_bar=3
+to_add = data.frame( matrix(NA, empty_bar*nlevels(data$Seat.Type), ncol(data)) )
+colnames(to_add) = colnames(data)
+to_add$group=rep(levels(data$Seat.Type), each=empty_bar)
+data=data %>% arrange(Seat.Type)
+data$id=seq(1, nrow(data))
+
+label_data=data
+number_of_bar=nrow(label_data)
+angle= 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust<-ifelse( angle < -90, 1, 0)
+label_data$angle<-ifelse(angle < -90, angle+180, angle)
+ 
+# prepare a data frame for base lines
+base_data=data %>% 
+  group_by(Seat.Type) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+ 
+# prepare a data frame for grid (scales)
+grid_data = base_data
+grid_data$end = grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start = grid_data$start - 1
+grid_data=grid_data[-1,]
+
+p = ggplot(data, aes(x=as.factor(id), y=as.numeric(Seat.Type), fill=Aircraft)) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+    
+    geom_bar(aes(x=as.factor(id), y=as.numeric(Seat.Type), fill=Aircraft), stat="identity", alpha=0.5) +
+    
+    # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+    geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+    geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+    geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+    geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+    
+    # Add text showing the value of each 100/75/50/25 lines
+    annotate("text", x = rep(max(data$id),4), y = c(20, 40, 60, 80), label = c("20", "40", "60", "80") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+    
+    geom_bar(aes(x=as.factor(id), y=as.numeric(Seat.Type), fill=Aircraft), stat="identity", alpha=0.5) +
+    ylim(-100,120) +
+    theme_minimal() +
+    theme(
+        legend.position = "none",
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(rep(-1,4), "cm") 
+    ) +
+    coord_polar() + 
+    geom_text(data=label_data, aes(x=id, y=as.numeric(Seat.Type)+10, label=Aircraft, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+    
+    # Add base line information
+    geom_segment(data=base_data, aes(x = start, y = -5, xend = end, yend = -5), colour = "black", alpha=0.8, size=0.6 , inherit.aes = FALSE )  +
+    geom_text(data=base_data, aes(x = title, y = -18, label=Seat.Type), hjust=c(1,1,0,0), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+
+p
+
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+p <- read.csv("aircraftsCleanedRawData.csv") %>%    
+ggplot( aes(retard, Aircraft, size = retard, color=Destination)) +
+geom_point() +
+scale_x_log10()+
+theme_bw()
+p
+```
+
+
+
+D'apres cette courbe on remarque que le type Airbus est connu par la redandance des retards par rapport au type Boeing
+
+
+
+
+### __Clustring__ :
+
+
+
+Vu que delta est une compagnie exemple en terme de comformité avec les normes internationales, nous avons commencé par identifier les groupes suivants : 
+```{r}
+final1 <- read.csv("final.csv")
+final1$X <- NULL
+data <- read.csv("final.csv")
+data$X <- NULL
+data$Seat.Pitch=as.numeric(data$Seat.Pitch)
+data$Seat.Type=as.numeric(data$Seat.Type)
+data$Video.Type=as.numeric(data$Video.Type)
+data$Laptop.power=as.numeric(data$Laptop.power)
+data$Power.type=as.numeric(data$Power.type)
+data$Wi.Fi=as.numeric(data$Wi.Fi)
+data$names<- NULL
+data<-data.frame(scale(data,scale = T,center = T))
+final1$Seat.Pitch=as.numeric(final1$Seat.Pitch)
+final1$Seat.Type=as.numeric(final1$Seat.Type)
+final1$Video.Type=as.numeric(final1$Video.Type)
+final1$Laptop.power=as.numeric(final1$Laptop.power)
+final1$Power.type=as.numeric(final1$Power.type)
+final1$Wi.Fi=as.numeric(final1$Wi.Fi)
+final1$names<- NULL
+final1 <- data.frame(scale(final1,scale = T,center = T))
+set.seed(123)
+k.max  <- 10
+wss <- sapply(1:k.max, function(k){
+    kmeans(final1 , k ,nstart = 50,iter.max = 15)$tot.withinss
+})
+
+plot(1:k.max , wss , type = 'b' , pch=' 19' , frame= FALSE, xlab = "nombre de cluster" , ylab = "somme")
+o <- kmeans(final1 ,3 )
+final1$cluster <- o$cluster
+final11 <- read.csv("final11.csv")
+final11$cluster <- o$cluster
+dd<- final11[which(final11$cluster==1),]
+ddd<- final11[which(final11$cluster==2),]
+dddd<- final11[which(final11$cluster==3),]
+```
+
+
+
+
+
+#### * __Cluster 1__ : 
+
+```{r}
+
+show(dd[order(dd$names),])
+```
+
+
+
+```{r}
+g1<-ggplot(dd, aes(Seat.Type, fill = Seat.Type)) + geom_bar()
+g2<-ggplot(dd, aes(Seat.Pitch, fill = Seat.Pitch)) + geom_bar()
+g3<-ggplot(dd, aes(Video.Type, fill = Video.Type)) + geom_bar()
+g4<-ggplot(dd, aes(Laptop.power, fill = Laptop.power)) + geom_bar()
+g5<-ggplot(dd, aes(Power.type, fill = Power.type)) + geom_bar()
+g6<-ggplot(dd, aes(Wi.Fi, fill = Wi.Fi)) + geom_bar()
+library(ggpubr)
+ggarrange(g1,g2,g3,g4,g5,g6)
+```
+
+Ce cluster se caracterise par : 
+
+-important nombre de sieges inclinables et des lits plats
+-environ 37 ft d'hauteur des sieges 
+-Des sieges munis en télé a la demande 
+-Prence de WIfi , alimentation en Ac et laptop
+
+
+#### * __Cluster 2__ : 
+
+```{r}
+
+
+show(ddd[order(ddd$names),])
+```
+
+
+
+```{r}
+g1<-ggplot(ddd, aes(Seat.Type, fill = Seat.Type)) + geom_bar()
+g2<-ggplot(ddd, aes(Seat.Pitch, fill = Seat.Pitch)) + geom_bar()
+g3<-ggplot(ddd, aes(Video.Type, fill = Video.Type)) + geom_bar()
+g4<-ggplot(ddd, aes(Laptop.power, fill = Laptop.power)) + geom_bar()
+g5<-ggplot(ddd, aes(Power.type, fill = Power.type)) + geom_bar()
+ggarrange(g1,g2,g3,g4,g5)
+```
+
+Ce cluster se caracterise par :
+-Des sieges standard 
+-Des siege de petite hauteur 
+-Absence de de tele sur demande et de Ac power et de laptop power 
+-Absence de wifi
+
+
+
+
+#### * __Cluster 3__ :
+
+```{r}
+
+
+show(dddd[order(dddd$names),])
+```
+
+
+
+```{r}
+g1<-ggplot(dddd, aes(Seat.Type, fill = Seat.Type)) + geom_bar()
+g2<-ggplot(dddd, aes(Seat.Pitch, fill = Seat.Pitch)) + geom_bar()
+g3<-ggplot(dddd, aes(Video.Type, fill = Video.Type)) + geom_bar()
+g4<-ggplot(dddd, aes(Laptop.power, fill = Laptop.power)) + geom_bar()
+g5<-ggplot(dddd, aes(Power.type, fill = Power.type)) + geom_bar()
+g6<-ggplot(dddd, aes(Wi.Fi, fill = Wi.Fi)) + geom_bar()
+ggarrange(g1,g2,g3,g4,g5,g6)
+```
+
+
+ Ce cluster se caracterise par : 
+ -Presence de wifi 
+ -Sieges standards 
+ - SIeges d'hauteur entre 30-35
+ -Presence de Ac power et laptop
+ 
+ 
+# Interpretation
+ Le profil typique de tunisair est donc adequat au cluster deux 
+
+# Etude de retard 
+
+```{r}
+data = read.csv(file="aircraftsCleanedRawData.csv")
+str(data)
+data$iden <- NULL
+data$id <- NULL
+data$company <- "OTHER"
+data[grep("TU ",data$flight,value=FALSE),]$company <- "TU"
+str(data)
+kmeansDataSet <- data[,-c(2,3,4,6,7)]
+segKmeans <- kmeans(kmeansDataSet,3)
+segKmeansResult <- segKmeans$cluster
+kmeansResult <- data.frame(cluster = segKmeansResult,aircraft = data[,6],flight = data[,2], retard = data[,5])
+str(kmeansResult)
+kmeansResult$cluster <- as.factor(kmeansResult$cluster)
+library(ggplot2)
+str(kmeansResult)
+library(cluster)
+library(fpc)
+plotcluster(kmeansDataSet,segKmeansResult)
+
+crossKmeans <- table(data$company, kmeansResult$cluster)
+crossKmeans
+
+
+
+```
+
+```{r}
+
+cahData <- data[,c(1,5)]
+cahData <- scale(cahData)
+outdist <- dist(cahData)
+gpclust <- hclust(outdist,method="ward.D2")
+plot(gpclust)
+outcah <- cutree(gpclust,3)
+crossCah <- table(data$company,outcah)
+crossCah
+```
+
+on remarque donc que la segmentation en KMEANS satisfait nos besoins, donc la
+segmentation en CAH est à rejeter
+
+
+#Interpretaion 
+
+Apres avoir fais le clustering on a remarqué que les vols de tunisair font beaucoup de retard malgres que les modeles des flottes est identiques au modele des autres companies 
+On conclut que le probleme de retard n'est pas a cause des modeles mais de tunisair entre autres l'age de la flotte 
+
+#Déploiement 
+
+Pour recapituler et sortir avec des solutions pouvants etre envisager par la compagnie Tunisair, On peut dire que l'un des probleme est le nombre restreint d'avions . 
+
+L'une des solution a envisager est l'achat de nouvel avions qui peuvent assurer de meilleurs conditions aux visiteurs de notre pays.
+
+ 
+La seconde solution serait de re-utiliser ses avions inexploites. Certaines de ses avions sont stocké.
+
+Si Tunisair decide de mettre en place une de ces solutions, il ne faut pas oublier la contrainte budgetaire.
+
+
+
+
+ 
+ 
