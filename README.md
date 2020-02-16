@@ -19,5 +19,6 @@ Analyze the different categories of Tunisian airline's planes and define its pos
 • https://donnees.banquemondiale.org/  
 • https://www.planespotters.net  
 • https://wwwflightstats.com/  
-• https://www.seatguru.com  
-
+• https://www.seatguru.com   
+  
+  Worked on this project with "D-miners" Teammates : Ramy Kader, Karim Massoudi, Helmi Bellahirech, Maissa Ouni 
